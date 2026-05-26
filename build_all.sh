@@ -22,6 +22,7 @@ API_VERSION="30"   # Android 11 minimum
 
 # ── Step 0: normalise CRLF line endings (cloned on Windows hosts) ───────────
 cd /app/nwaku-src
+git config --global --add safe.directory /app/nwaku-src
 echo "[0/3] Normalising CRLF line endings..."
 find . -type f \( -name "*.sh" -o -name "Makefile" -o -name "*.mk" \
      -o -name "*.nims" -o -name "*.cfg" -o -name "*.toml" \
@@ -37,6 +38,17 @@ if [ -z "$NAT_DIR" ]; then
     exit 1
 fi
 echo "      nat_traversal found at: $NAT_DIR"
+
+LSQUIC_IO=$(find /app/nwaku-src/nimbledeps/pkgs2 -path "*/lsquic/context/io.nim" | head -1)
+if [ -z "$LSQUIC_IO" ]; then
+    echo "ERROR: lsquic context/io.nim not found in nimbledeps!" >&2
+    exit 1
+fi
+echo "      lsquic io.nim found at: $LSQUIC_IO"
+
+# Android x86_64 uses Bionic's msghdr layout, where msg_iovlen is int.
+# The pinned nim-lsquic version treats all linux+x86_64 targets as glibc.
+sed -i 's/when defined(linux) and defined(x86_64):/when defined(linux) and defined(x86_64) and not defined(android):/' "$LSQUIC_IO"
 
 # Normalise line endings inside downloaded packages too
 find "$NAT_DIR" -type f \( -name "*.sh" -o -name "Makefile" -o -name "*.mk" \
