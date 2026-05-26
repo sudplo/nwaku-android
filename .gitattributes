@@ -1,0 +1,7 @@
+# Ensure shell scripts always use LF (Unix) line endings in the repo
+*.sh text eol=lf
+Makefile text eol=lf
+*.mk text eol=lf
+
+# Normalise text files
+* text=auto

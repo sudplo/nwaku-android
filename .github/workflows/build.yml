@@ -1,0 +1,155 @@
+name: Build & Release nwaku Android Binaries
+
+on:
+  # Run on every push to main (only if relevant files changed)
+  push:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'build_all.sh'
+      - '.github/workflows/build.yml'
+
+  # Run on every version tag → creates a GitHub Release
+  push:
+    tags:
+      - 'v*.*.*'
+
+  # Allow manual trigger from the Actions UI
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create releases and upload assets
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      # ── 1. Checkout this repository ────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Clone nwaku source at the pinned commit ─────────────────────
+      - name: Clone nwaku source (pinned commit)
+        run: |
+          git clone https://github.com/waku-org/nwaku.git ./nwaku-src
+          cd nwaku-src
+          git checkout c738c7b65ed0a3b7ce45c201c1d83038aabc0231
+          git submodule update --init --recursive
+
+      # ── 3. Set up Docker Buildx ────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── 4. Cache the Docker builder image layers ───────────────────────
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # ── 5. Build the Docker builder image ─────────────────────────────
+      - name: Build Docker builder image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: nwaku-android-builder:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to:   type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # Rotate cache (prevents unbounded growth)
+      - name: Rotate build cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      # ── 6. Run cross-compilation inside Docker ────────────────────────
+      - name: Cross-compile nwaku for Android
+        run: |
+          mkdir -p out
+          docker run --rm \
+            -v "${{ github.workspace }}/nwaku-src:/app/nwaku-src" \
+            -v "${{ github.workspace }}/out:/out" \
+            nwaku-android-builder
+
+      # ── 7. Verify outputs exist ────────────────────────────────────────
+      - name: Verify outputs
+        run: |
+          echo "=== Compilation output ==="
+          find out -name "*.so" | sort | while read f; do
+            echo "  $f  ($(du -sh "$f" | cut -f1))"
+          done
+          # Fail if any expected file is missing
+          test -f out/arm64-v8a/libwaku.so || (echo "MISSING: arm64-v8a/libwaku.so" && exit 1)
+          test -f out/arm64-v8a/librln.so  || (echo "MISSING: arm64-v8a/librln.so"  && exit 1)
+          test -f out/x86_64/libwaku.so    || (echo "MISSING: x86_64/libwaku.so"    && exit 1)
+          test -f out/x86_64/librln.so     || (echo "MISSING: x86_64/librln.so"     && exit 1)
+          echo "All expected files present ✓"
+
+      # ── 8. Package each ABI into a ZIP ────────────────────────────────
+      - name: Package binaries
+        run: |
+          cd out
+          zip -r ../waku-android-arm64-v8a.zip arm64-v8a/
+          zip -r ../waku-android-x86_64.zip    x86_64/
+          cd ..
+          sha256sum waku-android-arm64-v8a.zip waku-android-x86_64.zip > SHA256SUMS.txt
+          echo "=== SHA-256 checksums ==="
+          cat SHA256SUMS.txt
+
+      # ── 9a. Upload as workflow artifacts (every run) ───────────────────
+      - name: Upload arm64-v8a artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: waku-android-arm64-v8a
+          path: waku-android-arm64-v8a.zip
+
+      - name: Upload x86_64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: waku-android-x86_64
+          path: waku-android-x86_64.zip
+
+      # ── 9b. Create a GitHub Release and attach ZIPs (tag pushes only) ─
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "nwaku Android ${{ github.ref_name }}"
+          body: |
+            ## nwaku Android pre-built libraries — ${{ github.ref_name }}
+
+            Cross-compiled from nwaku commit `c738c7b` (v0.38.1) using:
+            - Android NDK **r26b** (LLVM 17)
+            - Rust **stable**
+            - Nim **2.2.4**
+            - API level **30** (Android 11+)
+
+            ### Files
+
+            | Archive | Contents |
+            |---------|----------|
+            | `waku-android-arm64-v8a.zip` | `arm64-v8a/libwaku.so` + `arm64-v8a/librln.so` |
+            | `waku-android-x86_64.zip`    | `x86_64/libwaku.so` + `x86_64/librln.so` |
+            | `SHA256SUMS.txt` | SHA-256 checksums for verification |
+
+            ### Usage
+
+            Place the `.so` files in your Android module's `jniLibs/` directory and load them with:
+            ```kotlin
+            System.loadLibrary("rln")
+            System.loadLibrary("waku")
+            ```
+
+            See the [README](https://github.com/${{ github.repository }}#readme) for full integration instructions.
+          files: |
+            waku-android-arm64-v8a.zip
+            waku-android-x86_64.zip
+            SHA256SUMS.txt
+          draft: false
+          prerelease: false

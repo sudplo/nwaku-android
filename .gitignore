@@ -1,0 +1,13 @@
+# Source code and build outputs — never committed
+nwaku-src/
+out/
+*.zip
+
+# Docker layer cache dirs
+.docker/
+
+# OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
