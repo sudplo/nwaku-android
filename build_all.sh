@@ -121,6 +121,7 @@ build_for_arch() {
         --passL:"-lc++abi" \
         --passL:"-Wl,--end-group" \
         --passL:"-Wl,-rpath,\$ORIGIN" \
+        --passL:"-Wl,-z,max-page-size=16384" \
         --passC:"-fPIE" \
         --passL:"-pie" \
         apps/wakunode2/wakunode2.nim
