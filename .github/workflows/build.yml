@@ -1,10 +1,10 @@
 name: Build & Release nwaku Android Binaries
 
 on:
-  # Run on every push to main (only if relevant files changed)
+  # Run on every push to master (only if relevant files changed)
   # and every version tag -> creates a GitHub Release
   push:
-    branches: [ main ]
+    branches: [ master ]
     tags:
       - 'v*.*.*'
     paths:
