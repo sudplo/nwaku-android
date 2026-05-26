@@ -2,17 +2,15 @@ name: Build & Release nwaku Android Binaries
 
 on:
   # Run on every push to main (only if relevant files changed)
+  # and every version tag -> creates a GitHub Release
   push:
     branches: [ main ]
+    tags:
+      - 'v*.*.*'
     paths:
       - 'Dockerfile'
       - 'build_all.sh'
       - '.github/workflows/build.yml'
-
-  # Run on every version tag → creates a GitHub Release
-  push:
-    tags:
-      - 'v*.*.*'
 
   # Allow manual trigger from the Actions UI
   workflow_dispatch:
