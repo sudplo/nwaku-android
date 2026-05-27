@@ -6,7 +6,7 @@ on:
   push:
     branches: [ master ]
     tags:
-      - 'v*.*.*'
+      - 'v*.*'
     paths:
       - 'Dockerfile'
       - 'build_all.sh'
