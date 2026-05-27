@@ -46,9 +46,22 @@ if [ -z "$LSQUIC_IO" ]; then
 fi
 echo "      lsquic io.nim found at: $LSQUIC_IO"
 
-# Android x86_64 uses Bionic's msghdr layout, where msg_iovlen is int.
-# The pinned nim-lsquic version treats all linux+x86_64 targets as glibc.
-sed -i 's/when defined(linux) and defined(x86_64):/when defined(linux) and defined(x86_64) and not defined(android):/' "$LSQUIC_IO"
+# ── Patch: lsquic x86_64 Android type mismatch ─────────────────────────────
+# In glibc (desktop Linux x86_64), Tmsghdr.msg_iovlen is size_t → csize_t.
+# In Bionic (Android x86_64), msg_iovlen is int → cint.
+# The nim-lsquic binding has a `when defined(linux) and defined(x86_64):` branch
+# that uses csize_t, which also fires on Android x86_64. We narrow that guard
+# to exclude Android so the generic `else` branch (cint) is used instead.
+sed -i \
+  's/when defined(linux) and defined(x86_64):/when defined(linux) and defined(x86_64) and not defined(android):/g' \
+  "$LSQUIC_IO"
+
+# Verify the patch was applied
+if grep -q 'not defined(android)' "$LSQUIC_IO"; then
+    echo "      lsquic patch applied OK ✓"
+else
+    echo "WARNING: lsquic patch may not have applied — check $LSQUIC_IO" >&2
+fi
 
 # Normalise line endings inside downloaded packages too
 find "$NAT_DIR" -type f \( -name "*.sh" -o -name "Makefile" -o -name "*.mk" \
