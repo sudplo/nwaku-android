@@ -94,6 +94,9 @@ build_for_arch() {
     CARGO_LINKER_VAR="CARGO_TARGET_$(echo "$RUST_TARGET" | tr '-' '_' | tr '[:lower:]' '[:upper:]')_LINKER"
     export "$CARGO_LINKER_VAR"="$TOOLCHAIN_DIR/bin/${CLANG_TARGET}${API_VERSION}-clang"
 
+    # Ensure 16KB page size alignment for Android 15 compatibility
+    export RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384"
+
     cargo build --release -p rln \
         --no-default-features --features stateless \
         --target="$RUST_TARGET"
