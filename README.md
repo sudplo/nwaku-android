@@ -16,6 +16,8 @@ Both files are compiled for:
 | `arm64-v8a` | `aarch64-linux-android` | All modern Android phones (2019+) |
 | `x86_64` | `x86_64-linux-android` | Android emulators on x86-64 PCs / Macs |
 
+> **Android 15 Compatibility (16 KB page size):** Both libraries are compiled with `16 KB ELF segment alignment` (using `-Wl,-z,max-page-size=16384` for both Nim and Rust builds). This ensures they load and run properly on Android 15 devices with 16 KB page sizes enabled, while remaining fully backward-compatible with standard 4 KB page devices.
+
 > **Why no `armeabi-v7a`?** Google Play has required 64-bit support since 2019, and all devices shipped after ~2017 run 64-bit kernels. Targeting only 64-bit architectures avoids a known 32-bit compilation bug in the `stint` library (a Nim big-integer dependency) without requiring any source patches.
 
 ---
@@ -57,7 +59,7 @@ The NDK r26b is chosen because it ships LLVM 17, the same major version used by 
 
 ```bash
 # 1. Clone this repository
-git clone https://github.com/YOUR_USER/nwaku-android.git
+git clone https://github.com/sudplo/nwaku-android.git
 cd nwaku-android
 
 # 2. Clone nwaku source code at the pinned commit
@@ -129,8 +131,8 @@ The workflow at [`.github/workflows/build.yml`](.github/workflows/build.yml) aut
 1. Clones nwaku at the pinned commit
 2. Builds the Docker builder image
 3. Runs the cross-compilation inside Docker
-4. On every **push to `main`** or manual trigger (`workflow_dispatch`): uploads artifacts
-5. On every **tag push** matching `v*.*.*`: creates a **GitHub Release** and attaches the ZIP archives as release assets
+4. On every **push to `master`** or manual trigger (`workflow_dispatch`): uploads artifacts
+5. On every **tag push** matching `v*.*`: creates a **GitHub Release** and attaches the ZIP archives as release assets
 
 To publish a new release:
 ```bash
