@@ -28,6 +28,23 @@ find . -type f \( -name "*.sh" -o -name "Makefile" -o -name "*.mk" \
      -o -name "*.nims" -o -name "*.cfg" -o -name "*.toml" \
      -o -name "*.nimble" \) -exec sed -i 's/\r$//' {} +
 
+# ── Patch: Increase future timeouts in REST handlers to 20 seconds for Tor latency ──
+echo "[0.5/3] Patching future timeouts in REST handlers to 20 seconds..."
+find /app/nwaku-src/waku/rest_api -name "handlers.nim" -exec sed -i \
+  -e 's/const futTimeout\* = 5\.seconds/const futTimeout* = 20.seconds/g' \
+  -e 's/const futTimeout\* = 15\.seconds/const futTimeout* = 20.seconds/g' \
+  -e 's/const FutTimeoutForPushRequestProcessing\* = 5\.seconds/const FutTimeoutForPushRequestProcessing* = 20.seconds/g' \
+  -e 's/const futTimeoutForSubscriptionProcessing\* = 5\.seconds/const futTimeoutForSubscriptionProcessing* = 20.seconds/g' \
+  {} +
+
+# Verify the timeouts patch was applied
+if grep -q '20.seconds' /app/nwaku-src/waku/rest_api/endpoint/store/handlers.nim; then
+    echo "      REST api timeout patch applied OK ✓"
+else
+    echo "WARNING: REST api timeout patch may not have applied correctly!" >&2
+fi
+
+
 # ── Step 1: download & install Nimble dependencies ──────────────────────────
 echo "[1/3] Installing Nimble dependencies (make nimbledeps)..."
 make nimbledeps/.nimble-setup
