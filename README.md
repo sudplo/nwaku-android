@@ -46,6 +46,14 @@ See the [Releases](../../releases) page to download the latest pre-built binarie
 
 The NDK r26b is chosen because it ships LLVM 17, the same major version used by Rust stable, which eliminates linker (LLD) bitcode incompatibilities when linking Nim code against Rust static/shared libraries.
 
+### Applied Patches
+
+To optimize and fix compatibility for Android, this repository automatically applies the following patches to the upstream `nwaku` source code during the build process:
+
+1. **REST API Timeouts**: Increased future timeouts in REST handlers to 20 seconds to accommodate Tor network latency.
+2. **lsquic Type Mismatch**: Fixed a compilation error on Android x86_64 targets where Bionic's `msg_iovlen` type mismatched the generic Linux expectation.
+3. **Onion Protocols Support**: Added `onion` and `onion3` multiaddress protocols to the ENR filtering in `waku/net/net_config.nim`, allowing onion addresses to be correctly propagated in ENRs.
+
 ---
 
 ## Building locally

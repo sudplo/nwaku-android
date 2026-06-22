@@ -44,6 +44,18 @@ else
     echo "WARNING: REST api timeout patch may not have applied correctly!" >&2
 fi
 
+# ── Patch: Add onion/onion3 protocols to ENR multiaddresses ────────────────
+echo "[0.6/3] Patching ENR multiaddresses to support onion/onion3..."
+sed -i 's/it.hasProtocol("wss")/it.hasProtocol("wss") or it.hasProtocol("onion") or it.hasProtocol("onion3")/g' /app/nwaku-src/waku/net/net_config.nim
+
+# Verify the onion patch was applied
+if grep -q 'onion3' /app/nwaku-src/waku/net/net_config.nim; then
+    echo "      Onion protocols patch applied OK ✓"
+else
+    echo "WARNING: Onion protocols patch may not have applied correctly!" >&2
+fi
+
+
 
 # ── Step 1: download & install Nimble dependencies ──────────────────────────
 echo "[1/3] Installing Nimble dependencies (make nimbledeps)..."
