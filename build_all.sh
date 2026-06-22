@@ -179,7 +179,7 @@ build_for_arch() {
         --passL:"-Wl,--end-group" \
         --passL:"-Wl,-rpath,\$ORIGIN" \
         --passL:"-Wl,-z,max-page-size=16384" \
-        --passC:"-fPIE" \
+        --passC:"-fPIE -Wno-incompatible-function-pointer-types" \
         --passL:"-pie" \
         apps/wakunode2/wakunode2.nim
 
