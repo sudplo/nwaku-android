@@ -183,19 +183,12 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     socks5Proxy: Option[string] = none(string),
 ): Switch {.raises: [Defect, IOError, LPError].} ='''
     
-    t6_3 = '''    .withNoise()
-    .withTcpTransport(transportFlags)
+    t6_3 = '''    .withTcpTransport(transportFlags)
     .withNameResolver(nameResolver)'''
-    r6_3 = '''    .withNoise()'''
+    r6_3 = ''
 
-    t6_4 = '''    .withCircuitRelay(circuitRelay)
-    .withAutonat()
-
-  if peerStoreCapacity.isSome():'''
-    r6_4 = '''    .withCircuitRelay(circuitRelay)
-    .withAutonat()
-
-  if socks5Proxy.isSome() and socks5Proxy.get() != "":
+    t6_4 = '  if peerStoreCapacity.isSome():'
+    r6_4 = '''  if socks5Proxy.isSome() and socks5Proxy.get() != "":
     let proxyAddress = try:
       initTAddress(socks5Proxy.get())
     except CatchableError as e:
