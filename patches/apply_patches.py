@@ -90,6 +90,7 @@ def apply_lsquic_patch(src_dir):
 
 def apply_socks5_proxy_patch(src_dir):
     print("Applying Tor SOCKS5 proxy support patch...")
+    empty_replacement = ''  # explicit marker for intentional deletion replacements
     
     # 1. tools/confutils/cli_args.nim
     f1 = os.path.join(src_dir, 'tools', 'confutils', 'cli_args.nim')
@@ -183,21 +184,30 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     socks5Proxy: Option[string] = none(string),
 ): Switch {.raises: [Defect, IOError, LPError].} ='''
     
+    # Remove the inline transport/name resolver chain first; they are reinserted
+    # after builder setup by `t6_4`/`r6_4` so Tor/TCP selection can be conditional.
     t6_3 = '''    .withTcpTransport(transportFlags)
     .withNameResolver(nameResolver)'''
-    r6_3 = '''    if socks5Proxy.isSome() and socks5Proxy.get() != "":
-      let proxyAddress = try:
-        initTAddress(socks5Proxy.get())
-      except CatchableError as e:
-        raise newException(LPError, "Invalid SOCKS5 proxy address: " & e.msg)
-      b = b.withTransport(
-        proc(config: TransportConfig): Transport =
-          TorTransport.new(proxyAddress, transportFlags, config.upgr)
-      )
-    else:
-      b = b.withTcpTransport(transportFlags)
+    r6_3 = empty_replacement
 
-    b = b.withNameResolver(nameResolver)'''
+    # Insert conditional Tor/TCP transport selection plus name resolver setup
+    # right before peer store configuration.
+    t6_4 = '  if peerStoreCapacity.isSome():'
+    r6_4 = '''  if socks5Proxy.isSome() and socks5Proxy.get() != "":
+    let proxyAddress = try:
+      initTAddress(socks5Proxy.get())
+    except CatchableError as e:
+      raise newException(LPError, "Invalid SOCKS5 proxy address: " & e.msg)
+    b = b.withTransport(
+      proc(config: TransportConfig): Transport =
+        TorTransport.new(proxyAddress, transportFlags, config.upgr)
+    )
+  else:
+    b = b.withTcpTransport(transportFlags)
+
+  b = b.withNameResolver(nameResolver)
+
+  if peerStoreCapacity.isSome():'''
     
     success = True
     success &= patch_file(f1, t1_1, r1_1)
@@ -213,6 +223,7 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     success &= patch_file(f6, t6_1, r6_1)
     success &= patch_file(f6, t6_2, r6_2)
     success &= patch_file(f6, t6_3, r6_3)
+    success &= patch_file(f6, t6_4, r6_4)
     return success
 
 def main():
