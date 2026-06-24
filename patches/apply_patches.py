@@ -186,8 +186,7 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     t6_3 = '''    .withNoise()
     .withTcpTransport(transportFlags)
     .withNameResolver(nameResolver)'''
-    r6_3 = '''    .withNoise()
-    .withNameResolver(nameResolver)'''
+    r6_3 = '''    .withNoise()'''
 
     t6_4 = '''    .withCircuitRelay(circuitRelay)
     .withAutonat()
@@ -207,6 +206,8 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     )
   else:
     b = b.withTcpTransport(transportFlags)
+
+  b = b.withNameResolver(nameResolver)
 
   if peerStoreCapacity.isSome():'''
     
