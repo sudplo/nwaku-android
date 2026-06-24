@@ -183,21 +183,32 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     socks5Proxy: Option[string] = none(string),
 ): Switch {.raises: [Defect, IOError, LPError].} ='''
     
-    t6_3 = '''    .withTcpTransport(transportFlags)
+    t6_3 = '''    .withNoise()
+    .withTcpTransport(transportFlags)
     .withNameResolver(nameResolver)'''
-    r6_3 = '''    if socks5Proxy.isSome() and socks5Proxy.get() != "":
-      let proxyAddress = try:
-        initTAddress(socks5Proxy.get())
-      except CatchableError as e:
-        raise newException(LPError, "Invalid SOCKS5 proxy address: " & e.msg)
-      b = b.withTransport(
-        proc(config: TransportConfig): Transport =
-          TorTransport.new(proxyAddress, transportFlags, config.upgr)
-      )
-    else:
-      b = b.withTcpTransport(transportFlags)
+    r6_3 = '''    .withNoise()
+    .withNameResolver(nameResolver)'''
 
-    b = b.withNameResolver(nameResolver)'''
+    t6_4 = '''    .withCircuitRelay(circuitRelay)
+    .withAutonat()
+
+  if peerStoreCapacity.isSome():'''
+    r6_4 = '''    .withCircuitRelay(circuitRelay)
+    .withAutonat()
+
+  if socks5Proxy.isSome() and socks5Proxy.get() != "":
+    let proxyAddress = try:
+      initTAddress(socks5Proxy.get())
+    except CatchableError as e:
+      raise newException(LPError, "Invalid SOCKS5 proxy address: " & e.msg)
+    b = b.withTransport(
+      proc(config: TransportConfig): Transport =
+        TorTransport.new(proxyAddress, transportFlags, config.upgr)
+    )
+  else:
+    b = b.withTcpTransport(transportFlags)
+
+  if peerStoreCapacity.isSome():'''
     
     success = True
     success &= patch_file(f1, t1_1, r1_1)
@@ -213,6 +224,7 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     success &= patch_file(f6, t6_1, r6_1)
     success &= patch_file(f6, t6_2, r6_2)
     success &= patch_file(f6, t6_3, r6_3)
+    success &= patch_file(f6, t6_4, r6_4)
     return success
 
 def main():
