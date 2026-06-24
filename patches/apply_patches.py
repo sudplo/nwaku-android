@@ -183,10 +183,14 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
     socks5Proxy: Option[string] = none(string),
 ): Switch {.raises: [Defect, IOError, LPError].} ='''
     
+    # Remove the inline transport/name resolver chain first; they are reinserted
+    # after builder setup by t6_4/r6_4 so Tor/TCP selection can be conditional.
     t6_3 = '''    .withTcpTransport(transportFlags)
     .withNameResolver(nameResolver)'''
     r6_3 = ''
 
+    # Insert conditional Tor/TCP transport selection plus name resolver setup
+    # right before peer store configuration.
     t6_4 = '  if peerStoreCapacity.isSome():'
     r6_4 = '''  if socks5Proxy.isSome() and socks5Proxy.get() != "":
     let proxyAddress = try:
