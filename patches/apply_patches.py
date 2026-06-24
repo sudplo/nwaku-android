@@ -90,7 +90,7 @@ def apply_lsquic_patch(src_dir):
 
 def apply_socks5_proxy_patch(src_dir):
     print("Applying Tor SOCKS5 proxy support patch...")
-    remove_text = ''  # explicit marker for intentional deletion replacements
+    empty_replacement = ''  # explicit marker for intentional deletion replacements
     
     # 1. tools/confutils/cli_args.nim
     f1 = os.path.join(src_dir, 'tools', 'confutils', 'cli_args.nim')
@@ -185,10 +185,10 @@ proc withSocks5Proxy*(builder: var WakuNodeBuilder, socks5Proxy: Option[string])
 ): Switch {.raises: [Defect, IOError, LPError].} ='''
     
     # Remove the inline transport/name resolver chain first; they are reinserted
-    # after builder setup by t6_4/r6_4 so Tor/TCP selection can be conditional.
+    # after builder setup by `t6_4`/`r6_4` so Tor/TCP selection can be conditional.
     t6_3 = '''    .withTcpTransport(transportFlags)
     .withNameResolver(nameResolver)'''
-    r6_3 = remove_text
+    r6_3 = empty_replacement
 
     # Insert conditional Tor/TCP transport selection plus name resolver setup
     # right before peer store configuration.
