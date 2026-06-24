@@ -28,35 +28,6 @@ find . -type f \( -name "*.sh" -o -name "Makefile" -o -name "*.mk" \
      -o -name "*.nims" -o -name "*.cfg" -o -name "*.toml" \
      -o -name "*.nimble" \) -exec sed -i 's/\r$//' {} +
 
-# ── Patch: Increase future timeouts in REST handlers to 20 seconds for Tor latency ──
-echo "[0.5/3] Patching future timeouts in REST handlers to 20 seconds..."
-find /app/nwaku-src/waku/rest_api -name "handlers.nim" -exec sed -i \
-  -e 's/const futTimeout\* = 5\.seconds/const futTimeout* = 20.seconds/g' \
-  -e 's/const futTimeout\* = 15\.seconds/const futTimeout* = 20.seconds/g' \
-  -e 's/const FutTimeoutForPushRequestProcessing\* = 5\.seconds/const FutTimeoutForPushRequestProcessing* = 20.seconds/g' \
-  -e 's/const futTimeoutForSubscriptionProcessing\* = 5\.seconds/const futTimeoutForSubscriptionProcessing* = 20.seconds/g' \
-  {} +
-
-# Verify the timeouts patch was applied
-if grep -q '20.seconds' /app/nwaku-src/waku/rest_api/endpoint/store/handlers.nim; then
-    echo "      REST api timeout patch applied OK ✓"
-else
-    echo "WARNING: REST api timeout patch may not have applied correctly!" >&2
-fi
-
-# ── Patch: Add onion/onion3 protocols to ENR multiaddresses ────────────────
-echo "[0.6/3] Patching ENR multiaddresses to support onion/onion3..."
-sed -i 's/it.hasProtocol("wss")/it.hasProtocol("wss") or it.hasProtocol("onion") or it.hasProtocol("onion3")/g' /app/nwaku-src/waku/net/net_config.nim
-
-# Verify the onion patch was applied
-if grep -q 'onion3' /app/nwaku-src/waku/net/net_config.nim; then
-    echo "      Onion protocols patch applied OK ✓"
-else
-    echo "WARNING: Onion protocols patch may not have applied correctly!" >&2
-fi
-
-
-
 # ── Step 1: download & install Nimble dependencies ──────────────────────────
 echo "[1/3] Installing Nimble dependencies (make nimbledeps)..."
 make nimbledeps/.nimble-setup
@@ -68,29 +39,9 @@ if [ -z "$NAT_DIR" ]; then
 fi
 echo "      nat_traversal found at: $NAT_DIR"
 
-LSQUIC_IO=$(find /app/nwaku-src/nimbledeps/pkgs2 -path "*/lsquic/context/io.nim" | head -1)
-if [ -z "$LSQUIC_IO" ]; then
-    echo "ERROR: lsquic context/io.nim not found in nimbledeps!" >&2
-    exit 1
-fi
-echo "      lsquic io.nim found at: $LSQUIC_IO"
-
-# ── Patch: lsquic x86_64 Android type mismatch ─────────────────────────────
-# In glibc (desktop Linux x86_64), Tmsghdr.msg_iovlen is size_t → csize_t.
-# In Bionic (Android x86_64), msg_iovlen is int → cint.
-# The nim-lsquic binding has a `when defined(linux) and defined(x86_64):` branch
-# that uses csize_t, which also fires on Android x86_64. We narrow that guard
-# to exclude Android so the generic `else` branch (cint) is used instead.
-sed -i \
-  's/when defined(linux) and defined(x86_64):/when defined(linux) and defined(x86_64) and not defined(android):/g' \
-  "$LSQUIC_IO"
-
-# Verify the patch was applied
-if grep -q 'not defined(android)' "$LSQUIC_IO"; then
-    echo "      lsquic patch applied OK ✓"
-else
-    echo "WARNING: lsquic patch may not have applied — check $LSQUIC_IO" >&2
-fi
+# ── Step 1.5: Apply compatibility and feature patches ───────────────────────
+echo "[1.5/3] Applying codebase patches..."
+python3 /app/patches/apply_patches.py /app/nwaku-src
 
 # Normalise line endings inside downloaded packages too
 find "$NAT_DIR" -type f \( -name "*.sh" -o -name "Makefile" -o -name "*.mk" \

@@ -53,6 +53,7 @@ To optimize and fix compatibility for Android, this repository automatically app
 1. **REST API Timeouts**: Increased future timeouts in REST handlers to 20 seconds to accommodate Tor network latency.
 2. **lsquic Type Mismatch**: Fixed a compilation error on Android x86_64 targets where Bionic's `msg_iovlen` type mismatched the generic Linux expectation.
 3. **Onion Protocols Support**: Added `onion` and `onion3` multiaddress protocols to the ENR filtering in `waku/net/net_config.nim`, allowing onion addresses to be correctly propagated in ENRs.
+4. **Tor SOCKS5 Proxy Support**: Adds the `--socks5-proxy` CLI flag and configurations to route outgoing p2p traffic through a Tor SOCKS5 proxy.
 
 ---
 
